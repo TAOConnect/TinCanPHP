@@ -164,7 +164,7 @@ class Score implements VersionableInterface, ComparableInterface
      * @return self
      */
     public function setMin($value) {
-        if (isset($this->max) && $value >= $this->max) {
+        if (isset($this->max) && $value > $this->max) {
             throw new InvalidArgumentException("Min must be less than max");
         }
         $this->min = (float) $value;
@@ -184,7 +184,7 @@ class Score implements VersionableInterface, ComparableInterface
      * @return self
      */
     public function setMax($value) {
-        if (isset($this->min) && $value <= $this->min) {
+        if (isset($this->min) && $value < $this->min) {
             throw new InvalidArgumentException("Max must be greater than min");
         }
         $this->max = (float) $value;
