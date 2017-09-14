@@ -32,6 +32,8 @@ class RemoteLRS implements LRSInterface
     protected $endpoint;
     protected $version;
     protected $auth;
+    protected $proxy;
+    protected $headers;
     protected $extended;
 
     public function __construct() {
@@ -100,6 +102,15 @@ class RemoteLRS implements LRSInterface
         if (isset($this->auth)) {
             array_push($http['header'], 'Authorization: ' . $this->auth);
         }
+        if (isset($this->proxy)) {
+            $http['proxy'] = $this->proxy;
+        }
+
+        if (isset($this->headers) && count($this->headers) > 0) {
+            foreach ($this->headers as $k => $v) {
+                array_push($http['header'], "$k: $v");
+            }
+        }
 
         if (isset($options['headers'])) {
             foreach ($options['headers'] as $k => $v) {
@@ -127,9 +138,12 @@ class RemoteLRS implements LRSInterface
         //
         set_error_handler(
             function ($errno, $errstr, $errfile, $errline, array $errcontext) {
-                throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
+                throw new \ErrorException($errstr, 0, $errno, $errfile, $errline);
             }
         );
+
+        $fp = null;
+        $response = null;
 
         try {
             $context = stream_context_create(array( 'http' => $http ));
@@ -139,7 +153,7 @@ class RemoteLRS implements LRSInterface
                 $content = "Request failed: $php_errormsg";
             }
         }
-        catch (ErrorException $ex) {
+        catch (\ErrorException $ex) {
             $content = "Request failed: $ex";
         }
 
@@ -215,7 +229,7 @@ class RemoteLRS implements LRSInterface
                 if ($pair[0] === 'charset') {
                     $result['headers']['contentTypeCharset'] = $pair[1];
                 }
-                else if ($pair[0] === 'boundary') {
+                elseif ($pair[0] === 'boundary') {
                     $result['headers']['contentTypeBoundary'] = $pair[1];
                 }
             }
@@ -232,7 +246,7 @@ class RemoteLRS implements LRSInterface
             if ($part === '') {
                 continue;
             }
-            else if ($part === '--') {
+            elseif ($part === '--') {
                 break;
             }
             list($header, $body) = explode("\r\n\r\n", $part, 2);
@@ -557,6 +571,15 @@ class RemoteLRS implements LRSInterface
         $requestCfg = array(
             'params' => $this->_queryStatementsRequestParams($query),
         );
+        if (func_num_args() > 1) {
+            $options = func_get_arg(1);
+
+            if (isset($options)) {
+                if (isset($options['headers'])) {
+                    $requestCfg['headers'] = $options['headers'];
+                }
+            }
+        }
 
         $response = $this->sendRequest('GET', 'statements', $requestCfg);
 
@@ -933,7 +956,7 @@ class RemoteLRS implements LRSInterface
     public function retrieveActivity($activityid) {
         $headers = array('Accept-language: *');
         if (isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
-            $headers = 'Accept-language: ' . $_SERVER['HTTP_ACCEPT_LANGUAGE'] . ', *';
+            $headers = array('Accept-language: ' . $_SERVER['HTTP_ACCEPT_LANGUAGE'] . ', *');
         }
 
         $response = $this->sendRequest(
@@ -984,7 +1007,6 @@ class RemoteLRS implements LRSInterface
     }
 
     public function retrieveAgentProfile($agent, $id) {
-        // TODO: Group?
         if (! $agent instanceof Agent) {
             $agent = new Agent($agent);
         }
@@ -1025,7 +1047,6 @@ class RemoteLRS implements LRSInterface
     }
 
     public function saveAgentProfile($agent, $id, $content) {
-        // TODO: Group?
         if (! $agent instanceof Agent) {
             $agent = new Agent($agent);
         }
@@ -1078,7 +1099,6 @@ class RemoteLRS implements LRSInterface
 
     // TODO: Etag?
     public function deleteAgentProfile($agent, $id) {
-        // TODO: Group?
         if (! $agent instanceof Agent) {
             $agent = new Agent($agent);
         }
@@ -1097,7 +1117,6 @@ class RemoteLRS implements LRSInterface
     }
 
     public function retrievePerson($agent) {
-        // TODO: Group?
         if (! $agent instanceof Agent) {
             $agent = new Agent($agent);
         }
@@ -1161,4 +1180,16 @@ class RemoteLRS implements LRSInterface
         return $this;
     }
     public function getAuth() { return $this->auth; }
+
+    public function setProxy($value) {
+        $this->proxy = $value;
+        return $this;
+    }
+    public function getProxy() { return $this->proxy; }
+
+    public function setHeaders($value) {
+        $this->headers = $value;
+        return $this;
+    }
+    public function getHeaders() { return $this->headers; }
 }
